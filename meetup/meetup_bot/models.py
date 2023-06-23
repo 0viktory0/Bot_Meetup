@@ -12,7 +12,7 @@ ROLE = [
 
 class Member(models.Model):
     telegram_id = models.IntegerField('telegram_id', unique=True)
-    telegram_name = models.CharField(verbose_name='Телеграм', max_length=200)
+    telegram_name = models.CharField(verbose_name='Телеграм', max_length=200, default='Guest')
     role = models.CharField(
         verbose_name='Спикер или Гость?',
         max_length=10,

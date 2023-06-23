@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from django.utils import timezone
 from pathlib import Path
 
 import django
@@ -17,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'meetup.settings')
 django.setup()
 
-from meetup_bot.models import Member
+from meetup_bot.models import Member, Presentation
 import markups as m
 
 
@@ -85,6 +86,22 @@ async def anounce(cb: types.callback_query):
 @dp.callback_query_handler(text='next_presentation', state=[UserState, None])
 async def next_presentation(cb: types.callback_query):
     message = 'Заглушка для next_presentation'
+
+    curent_presentation = Presentation.objects.get(is_active_now=True)
+    delay = (timezone.localtime(timezone.now()) -
+             (curent_presentation.start_time +
+              curent_presentation.duration))
+    future_presentations = Presentation.objects.filter(start_time__gt=curent_presentation.start_time
+                                                       ).order_by('start_time')
+    for future_presentation in future_presentations:
+        future_presentation.start_time = future_presentation.start_time + delay
+        future_presentation.save()
+    curent_presentation.is_active_now = False
+    curent_presentation.save()
+    following_presentation = future_presentations.first()
+    following_presentation.is_active_now = True
+    following_presentation.save()
+
     await cb.message.answer(message)
     await cb.message.answer('Meetup menu', reply_markup=m.participate_markup)
 
