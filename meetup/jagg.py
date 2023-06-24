@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+
 from django.utils import timezone
 from pathlib import Path
 
@@ -21,18 +22,14 @@ django.setup()
 from meetup_bot.models import Member, Presentation
 import markups as m
 
-
 BASE_DIR = Path(__file__).resolve().parent
 dotenv.load_dotenv(Path(BASE_DIR, '.env'))
 token = os.environ['BOT_TOKEN']
 PAYMENT_TOKEN = os.environ['PAYMENT_TOKEN']
 
-
-
 bot = Bot(token=token)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-
 
 
 class UserState(StatesGroup):
@@ -91,8 +88,9 @@ async def next_presentation(cb: types.callback_query):
     delay = (timezone.localtime(timezone.now()) -
              (curent_presentation.start_time +
               curent_presentation.duration))
-    future_presentations = Presentation.objects.filter(start_time__gt=curent_presentation.start_time
-                                                       ).order_by('start_time')
+    today_presentations = Presentation.objects.filter(start_time__date=curent_presentation.start_time.date())
+    future_presentations = today_presentations.filter(start_time__gt=curent_presentation.start_time
+                                                      ).order_by('start_time')
     for future_presentation in future_presentations:
         future_presentation.start_time = future_presentation.start_time + delay
         future_presentation.save()
@@ -157,9 +155,9 @@ async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
 
 
 @dp.message_handler(
-        content_types=ContentType.SUCCESSFUL_PAYMENT,
-        state=[UserState, None]
-    )
+    content_types=ContentType.SUCCESSFUL_PAYMENT,
+    state=[UserState, None]
+)
 async def successful_payment(message: types.Message, state: FSMContext):
     await bot.send_message(
         message.chat.id,
@@ -167,7 +165,6 @@ async def successful_payment(message: types.Message, state: FSMContext):
         f'{message.successful_payment.currency} done'
     )
     # тут фунция для записи в бд информации о донате await sync_to_async(funcs.pay_order)(payloads['schedule_id'])
-
 
 
 executor.start_polling(dp, skip_updates=False)
